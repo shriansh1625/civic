@@ -1,0 +1,32 @@
+# CivicLens AI — Docker Compose
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./civiclens.db
+      - JWT_SECRET=civiclens-production-secret-change-me
+      - AMD_EPYC_OPTIMIZED=true
+      - WORKER_THREADS=64
+    volumes:
+      - db-data:/app/backend
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "5173:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db-data:
