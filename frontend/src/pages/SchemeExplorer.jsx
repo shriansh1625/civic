@@ -1,15 +1,25 @@
 /**
- * CivicLens AI — Scheme Explorer (v3 — production-grade polish)
- * Browse, filter, and search government schemes with smooth animations.
+ * CivicLens AI — Scheme Explorer (v5 — Cinematic Pitch Mode)
+ * Framer Motion staggered card reveals, premium glassmorphism, animated modal.
  */
 
 import React, { useState, useEffect } from 'react';
-import { schemesAPI } from '../services/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { schemesAPI, trackingAPI } from '../services/api';
 import {
   Search, Filter, MapPin, Users, ChevronDown,
   ExternalLink, IndianRupee, Calendar, FileText, X,
-  AlertTriangle, Clock, Sparkles, TrendingUp, SlidersHorizontal, XCircle
+  AlertTriangle, Clock, Sparkles, TrendingUp, SlidersHorizontal, XCircle,
+  Bell, BellOff, Loader2
 } from 'lucide-react';
+
+const stagger = {
+  container: { hidden: {}, show: { transition: { staggerChildren: 0.05 } } },
+  item: {
+    hidden: { opacity: 0, y: 14, scale: 0.98 },
+    show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
+  },
+};
 
 const CATEGORIES = [
   'all', 'education', 'agriculture', 'health', 'business',
@@ -77,10 +87,36 @@ export default function SchemeExplorer() {
   const [state, setState] = useState('All India');
   const [selected, setSelected] = useState(null);
   const [total, setTotal] = useState(0);
+  const [trackedSchemes, setTrackedSchemes] = useState(new Set());
+  const [trackingLoading, setTrackingLoading] = useState(new Set());
 
   useEffect(() => {
     loadSchemes();
+    loadSubscriptions();
   }, [category, audience, state]);
+
+  const loadSubscriptions = async () => {
+    try {
+      const res = await trackingAPI.getSubscriptions();
+      const ids = new Set((res.data || []).map(s => s.scheme_id));
+      setTrackedSchemes(ids);
+    } catch {}
+  };
+
+  const toggleTrack = async (e, schemeId) => {
+    e.stopPropagation();
+    setTrackingLoading(prev => new Set(prev).add(schemeId));
+    try {
+      if (trackedSchemes.has(schemeId)) {
+        await trackingAPI.unsubscribe(schemeId);
+        setTrackedSchemes(prev => { const n = new Set(prev); n.delete(schemeId); return n; });
+      } else {
+        await trackingAPI.subscribe(schemeId);
+        setTrackedSchemes(prev => new Set(prev).add(schemeId));
+      }
+    } catch {}
+    setTrackingLoading(prev => { const n = new Set(prev); n.delete(schemeId); return n; });
+  };
 
   const loadSchemes = async () => {
     setLoading(true);
@@ -131,26 +167,36 @@ export default function SchemeExplorer() {
   const clearAllFilters = () => { setCategory('all'); setAudience('all'); setState('All India'); setSearch(''); };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <motion.div
+      variants={stagger.container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      <motion.div variants={stagger.item} className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-white tracking-tight">Scheme Explorer</h1>
           <p className="text-gray-400 mt-1 text-sm">Browse <span className="text-white font-semibold">{total}</span> government schemes across India</p>
         </div>
         <div className="flex items-center gap-2">
           {hasActiveFilters && (
-            <button onClick={clearAllFilters} className="badge bg-red-500/10 text-red-400 border border-red-500/15 cursor-pointer hover:bg-red-500/20 transition-colors">
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              onClick={clearAllFilters}
+              className="badge bg-red-500/10 text-red-400 border border-red-500/15 cursor-pointer hover:bg-red-500/20 transition-colors"
+            >
               <XCircle className="w-3 h-3 mr-1" />Clear All
-            </button>
+            </motion.button>
           )}
           <span className="badge-green text-xs">
             <TrendingUp className="w-3 h-3 mr-1" />Live Data
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Search & Filters ── */}
-      <div className="glass-card p-5">
+      <motion.div variants={stagger.item} className="glass-card-cinematic p-5">
         <form onSubmit={handleSearch} className="flex gap-3 mb-4">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-saffron-400 transition-colors" />
@@ -165,53 +211,43 @@ export default function SchemeExplorer() {
         </form>
 
         <div className="flex flex-wrap gap-3 items-start">
-          {/* Category Filter */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <SlidersHorizontal className="w-4 h-4 text-gray-500 mr-1" />
             {CATEGORIES.map((cat) => (
-              <button
+              <motion.button
                 key={cat}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all duration-200 border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors duration-200 border ${
                   category === cat
                     ? 'bg-saffron-500/15 text-saffron-400 border-saffron-500/25 shadow-sm shadow-saffron-500/10'
                     : 'bg-white/[0.03] text-gray-400 hover:text-white hover:bg-white/[0.08] border-transparent'
                 }`}
               >
                 {cat}
-              </button>
+              </motion.button>
             ))}
           </div>
 
-          {/* Audience & State */}
           <div className="flex items-center gap-3 ml-auto">
             <div className="relative">
-              <select
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                className="input-field py-2 text-xs w-36 appearance-none pr-8 cursor-pointer"
-              >
-                {AUDIENCES.map((a) => (
-                  <option key={a.value} value={a.value}>{a.label}</option>
-                ))}
+              <select value={audience} onChange={(e) => setAudience(e.target.value)}
+                className="input-field py-2 text-xs w-36 appearance-none pr-8 cursor-pointer">
+                {AUDIENCES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
             </div>
             <div className="relative">
-              <select
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                className="input-field py-2 text-xs w-40 appearance-none pr-8 cursor-pointer"
-              >
-                {STATES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <select value={state} onChange={(e) => setState(e.target.value)}
+                className="input-field py-2 text-xs w-40 appearance-none pr-8 cursor-pointer">
+                {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Scheme Cards ── */}
       {loading ? (
@@ -221,21 +257,26 @@ export default function SchemeExplorer() {
           ))}
         </div>
       ) : schemes.length === 0 ? (
-        <div className="glass-card p-16 text-center">
+        <motion.div variants={stagger.item} className="glass-card-cinematic p-16 text-center">
           <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-300 font-medium">No schemes found</p>
           <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filter criteria</p>
-          <button onClick={clearAllFilters}
-            className="btn-secondary text-sm mt-4">Clear All Filters</button>
-        </div>
+          <button onClick={clearAllFilters} className="btn-secondary text-sm mt-4">Clear All Filters</button>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <motion.div
+          variants={stagger.container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
           {schemes.map((scheme, i) => (
-            <div
+            <motion.div
               key={scheme.id || i}
+              variants={stagger.item}
+              whileHover={{ y: -6, boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 0 40px rgba(255,107,0,0.04)' }}
               onClick={() => setSelected(scheme)}
-              className="glass-card-hover p-5 cursor-pointer group scheme-card-lift animate-count-up"
-              style={{ animationDelay: `${i * 50}ms` }}
+              className="glass-card-cinematic p-5 cursor-pointer group"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -249,7 +290,27 @@ export default function SchemeExplorer() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{scheme.ministry}</p>
                 </div>
-                <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-saffron-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
+                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+                  <button
+                    onClick={(e) => toggleTrack(e, scheme.id)}
+                    disabled={trackingLoading.has(scheme.id)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                      trackedSchemes.has(scheme.id)
+                        ? 'bg-saffron-500/15 text-saffron-400 border border-saffron-500/25'
+                        : 'bg-white/[0.04] text-gray-500 border border-white/[0.06] hover:text-saffron-400 hover:border-saffron-500/20'
+                    }`}
+                    title={trackedSchemes.has(scheme.id) ? 'Tracking enabled' : 'Track this scheme'}
+                  >
+                    {trackingLoading.has(scheme.id) ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : trackedSchemes.has(scheme.id) ? (
+                      <Bell className="w-3.5 h-3.5" />
+                    ) : (
+                      <BellOff className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-saffron-400 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
+                </div>
               </div>
 
               <p className="text-xs text-gray-400 mt-2.5 line-clamp-2 leading-relaxed">
@@ -269,16 +330,29 @@ export default function SchemeExplorer() {
                 <BudgetBadge amount={scheme.budget_allocated} />
                 <DeadlineBadge deadline={scheme.deadline} />
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* ── Detail Modal (Impact View) ── */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto glass-card p-8 animate-scale-in border border-white/[0.08]">
+      <AnimatePresence>
+        {selected && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              onClick={() => setSelected(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto glass-card-cinematic p-8 border border-white/[0.08]"
+            >
             <button onClick={() => setSelected(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/[0.06] flex items-center justify-center hover:bg-white/[0.12] transition-colors">
               <X className="w-4 h-4 text-gray-400" />
@@ -314,13 +388,19 @@ export default function SchemeExplorer() {
                 { icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10', val: selected.target_audience, sub: 'Target Group', capitalize: true },
                 { icon: MapPin, color: 'text-purple-400', bg: 'bg-purple-500/10', val: selected.state, sub: 'Coverage' },
               ].map((s, i) => (
-                <div key={i} className="bg-white/[0.04] rounded-xl p-3.5 text-center border border-white/[0.06] scheme-card-lift">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + i * 0.08 }}
+                  className="bg-white/[0.04] rounded-xl p-3.5 text-center border border-white/[0.06] hover:bg-white/[0.06] transition-colors"
+                >
                   <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mx-auto mb-2`}>
                     <s.icon className={`w-4 h-4 ${s.color}`} />
                   </div>
                   <p className={`text-base font-bold text-white ${s.capitalize ? 'capitalize' : ''}`}>{s.val}</p>
                   <p className="text-[10px] text-gray-500 mt-0.5">{s.sub}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -345,13 +425,29 @@ export default function SchemeExplorer() {
                   Visit Official Portal <ExternalLink className="w-4 h-4" />
                 </a>
               )}
+              <button
+                onClick={(e) => toggleTrack(e, selected.id)}
+                disabled={trackingLoading.has(selected.id)}
+                className={`text-sm px-4 py-2 rounded-xl flex items-center gap-2 transition-all duration-200 font-medium ${
+                  trackedSchemes.has(selected.id)
+                    ? 'bg-saffron-500/15 text-saffron-400 border border-saffron-500/25'
+                    : 'btn-secondary'
+                }`}
+              >
+                {trackingLoading.has(selected.id) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : trackedSchemes.has(selected.id) ? (
+                  <><Bell className="w-4 h-4" /> Tracking</>                ) : (
+                  <><BellOff className="w-4 h-4" /> Track Scheme</>                )}
+              </button>
               <span className="text-xs text-gray-500 ml-auto flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" /> {selected.deadline || 'Ongoing'}
               </span>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
+      </AnimatePresence>
+    </motion.div>
   );
 }

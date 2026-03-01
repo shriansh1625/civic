@@ -10,7 +10,7 @@ const COLORS = ['#FF6B00', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#10b981'
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload?.[0]) {
     return (
-      <div className="bg-navy-800 border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+      <div className="glass-card-cinematic px-4 py-2.5 shadow-elevated !rounded-lg border border-white/[0.08]">
         <p className="text-xs text-gray-400">{payload[0].payload.name}</p>
         <p className="text-sm font-semibold text-saffron-400">₹{payload[0].value.toLocaleString('en-IN')} Cr</p>
       </div>

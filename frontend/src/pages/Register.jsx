@@ -1,9 +1,10 @@
 /**
- * CivicLens AI — Registration Page
+ * CivicLens AI — Registration Page (v5 — Cinematic Pitch Mode)
  */
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { Shield, Mail, Lock, User, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
 
@@ -52,29 +53,47 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-700 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-navy-700 noise-bg flex items-center justify-center px-4 py-8 relative overflow-hidden">
+      <div className="animated-bg"><div className="animated-bg-orb3" /></div>
+      <div className="fixed inset-0 grid-pattern pointer-events-none z-[1]" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-lg relative z-10"
+      >
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl saffron-gradient flex items-center justify-center">
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: 3 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 rounded-xl saffron-gradient flex items-center justify-center shadow-lg shadow-saffron-500/25 ring-2 ring-saffron-500/10"
+            >
               <Shield className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-display font-bold text-2xl text-white">
-              CivicLens <span className="text-saffron-400">AI</span>
+            </motion.div>
+            <span className="font-display font-bold text-2xl text-white tracking-tight">
+              CivicLens <span className="text-gradient-hero">AI</span>
             </span>
           </Link>
-          <p className="text-gray-400 mt-2">Create your civic intelligence profile</p>
+          <p className="text-gray-400 mt-3 text-sm">Create your civic intelligence profile</p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="glass-card-cinematic p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {error}
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  className="flex items-center gap-2 p-3 rounded-xl bg-red-500/[0.08] border border-red-500/15 text-red-400 text-sm"
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
@@ -108,19 +127,21 @@ export default function Register() {
               <label className="block text-sm font-medium text-gray-300 mb-2">I am a...</label>
               <div className="grid grid-cols-2 gap-2">
                 {USER_TYPES.map((type) => (
-                  <button
+                  <motion.button
                     key={type.value}
                     type="button"
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => setForm({ ...form, user_type: type.value })}
-                    className={`p-3 rounded-xl text-left transition-all border ${
+                    className={`p-3 rounded-xl text-left transition-colors border ${
                       form.user_type === type.value
-                        ? 'bg-saffron-500/15 border-saffron-500/30 text-white'
+                        ? 'bg-saffron-500/15 border-saffron-500/30 text-white shadow-sm shadow-saffron-500/10'
                         : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                     }`}
                   >
                     <p className="text-sm font-medium">{type.label}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{type.desc}</p>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -150,9 +171,9 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-saffron-400 hover:text-saffron-300">Sign in</Link>
+          <Link to="/login" className="text-saffron-400 hover:text-saffron-300 font-medium">Sign in</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

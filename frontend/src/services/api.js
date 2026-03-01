@@ -80,4 +80,34 @@ export const adminAPI = {
   getCrawlStats: () => api.get('/admin/crawl-stats'),
 };
 
+// ── Document Validation ──────────────────────────
+export const validateAPI = {
+  photo: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/validate/photo', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  signature: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/validate/signature', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  pdf: (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    return api.post('/validate/pdf', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ── Scheme Tracking & Notifications ──────────────
+export const trackingAPI = {
+  subscribe: (schemeId) => api.post(`/subscribe/${schemeId}`),
+  unsubscribe: (schemeId) => api.delete(`/subscribe/${schemeId}`),
+  getSubscriptions: () => api.get('/subscriptions'),
+  getNotifications: (unreadOnly = false, limit = 50) =>
+    api.get('/notifications', { params: { unread_only: unreadOnly, limit } }),
+  getNotificationCount: () => api.get('/notifications/count'),
+  markNotificationRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllNotificationsRead: () => api.put('/notifications/read-all'),
+  registerPush: (data) => api.post('/push/subscribe', data),
+  unregisterPush: () => api.delete('/push/subscribe'),
+};
+
 export default api;

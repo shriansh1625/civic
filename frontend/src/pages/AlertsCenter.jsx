@@ -1,13 +1,22 @@
 /**
- * CivicLens AI — Alerts Center Page (v3 — production-grade polish)
+ * CivicLens AI — Alerts Center Page (v5 — Cinematic Pitch Mode)
  */
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { alertsAPI } from '../services/api';
 import {
   Bell, BellOff, CheckCheck, Filter, AlertTriangle,
   Clock, FileText, Info, Trash2, SlidersHorizontal, BellRing
 } from 'lucide-react';
+
+const stagger = {
+  container: { hidden: {}, show: { transition: { staggerChildren: 0.05 } } },
+  item: {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
+  },
+};
 
 export default function AlertsCenter() {
   const [alerts, setAlerts] = useState([]);
@@ -71,9 +80,14 @@ export default function AlertsCenter() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      variants={stagger.container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={stagger.item} className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-white tracking-tight">Alerts Center</h1>
           <p className="text-gray-400 mt-1 text-sm">
@@ -81,14 +95,19 @@ export default function AlertsCenter() {
           </p>
         </div>
         {unreadCount > 0 && (
-          <button onClick={markAllRead} className="btn-secondary text-sm flex items-center gap-2">
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={markAllRead}
+            className="btn-secondary text-sm flex items-center gap-2"
+          >
             <CheckCheck className="w-4 h-4" /> Mark All Read
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {/* Filters */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <motion.div variants={stagger.item} className="flex items-center gap-1.5 flex-wrap">
         <SlidersHorizontal className="w-4 h-4 text-gray-500 mr-1" />
         {[
           { value: 'all', label: 'All', count: alerts.length },
@@ -97,19 +116,21 @@ export default function AlertsCenter() {
           { value: 'deadline_reminder', label: 'Deadlines' },
           { value: 'update', label: 'Updates' },
         ].map((f) => (
-          <button
+          <motion.button
             key={f.value}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setFilter(f.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 border ${
               filter === f.value
                 ? 'bg-saffron-500/15 text-saffron-400 border-saffron-500/25 shadow-sm shadow-saffron-500/10'
                 : 'bg-white/[0.03] text-gray-400 hover:text-white hover:bg-white/[0.08] border-transparent'
             }`}
           >
             {f.label} {f.count !== undefined && <span className="ml-1 opacity-50">({f.count})</span>}
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
       {/* Alerts List */}
       {loading ? (
@@ -119,21 +140,27 @@ export default function AlertsCenter() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="glass-card p-16 text-center">
+        <motion.div variants={stagger.item} className="glass-card-cinematic p-16 text-center">
           <BellOff className="w-12 h-12 text-gray-600 mx-auto mb-3" />
           <p className="text-gray-300 font-medium">No alerts to show</p>
           <p className="text-xs text-gray-500 mt-1">You're all caught up!</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="space-y-3">
+        <motion.div
+          variants={stagger.container}
+          initial="hidden"
+          animate="show"
+          className="space-y-3"
+        >
           {filtered.map((alert, i) => {
             const IconComp = typeIcon[alert.alert_type] || Bell;
             return (
-              <div
+              <motion.div
                 key={alert.id || i}
+                variants={stagger.item}
+                whileHover={{ x: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}
                 onClick={() => markRead(alert.id)}
-                style={{ animationDelay: `${i * 60}ms` }}
-                className={`glass-card p-4 border-l-4 cursor-pointer transition-all duration-200 hover:bg-white/[0.06] scheme-card-lift animate-count-up
+                className={`glass-card-cinematic p-4 border-l-4 cursor-pointer transition-colors duration-200 hover:bg-white/[0.06]
                   ${priorityColor[alert.priority] || priorityColor.normal}
                   ${!alert.is_read ? 'ring-1 ring-white/[0.08]' : 'opacity-60'}`}
               >
@@ -169,12 +196,12 @@ export default function AlertsCenter() {
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+            </motion.div>
+          );
+        })}
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

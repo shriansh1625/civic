@@ -1,10 +1,13 @@
 /**
- * CivicLens AI — AI Chat Assistant (v3 — production-grade polish)
- * Conversational Q&A with refined message bubbles, glow effects, and smooth animations.
+ * CivicLens AI — AI Chat Assistant (v5 — Cinematic Pitch Mode)
+ * Framer Motion message animations, premium glassmorphism, animated confidence bar.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { chatAPI } from '../services/api';
+import { useAIActivity } from '../hooks/useAIActivity';
+import { AIConfidenceInline } from '../components/ui/AIConfidenceRing';
 import {
   Send, Bot, User, Sparkles, Copy, Check, HelpCircle,
   ExternalLink, IndianRupee, Calendar, FileText, ArrowRight, MessageSquare
@@ -24,7 +27,11 @@ const SUGGESTED_QUESTIONS = [
 function SchemeCard({ card }) {
   const budgetLabel = card.budget_cr ? `₹${card.budget_cr.toLocaleString('en-IN')} Cr` : null;
   return (
-    <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3.5 mt-2 scheme-card-lift hover:border-saffron-500/15 transition-all">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3.5 mt-2 hover:border-saffron-500/15 hover:bg-white/[0.06] transition-all"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-white truncate">{card.title}</h4>
@@ -54,7 +61,7 @@ function SchemeCard({ card }) {
           </a>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -98,6 +105,7 @@ export default function ChatAssistant() {
   const [copied, setCopied] = useState(null);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const { startAgent, completeAgent, failAgent } = useAIActivity();
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -111,6 +119,8 @@ export default function ChatAssistant() {
     setInput('');
     setLoading(true);
 
+    startAgent('summarization', `Searching schemes for: "${text.trim().slice(0, 40)}…"`);
+
     try {
       const res = await chatAPI.ask(text.trim());
       const data = res.data;
@@ -123,11 +133,13 @@ export default function ChatAssistant() {
         suggested_actions: data.suggested_actions || [],
       };
       setMessages((prev) => [...prev, assistantMsg]);
+      completeAgent('summarization', `Found ${data.scheme_cards?.length || 0} schemes, ${Math.round((data.confidence || 0) * 100)}% confidence`);
     } catch {
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: "I apologize, I'm having trouble processing your request right now. Please try again or rephrase your question.",
       }]);
+      failAgent('summarization', 'Failed to process query');
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -148,26 +160,44 @@ export default function ChatAssistant() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="flex flex-col h-[calc(100vh-10rem)]"
+    >
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
-        <div className="w-10 h-10 rounded-xl saffron-gradient flex items-center justify-center shadow-lg shadow-saffron-500/20 animate-border-glow">
+        <motion.div
+          whileHover={{ scale: 1.08, rotate: 3 }}
+          className="w-10 h-10 rounded-xl saffron-gradient flex items-center justify-center shadow-lg shadow-saffron-500/25 ring-2 ring-saffron-500/10"
+        >
           <Bot className="w-5 h-5 text-white" />
-        </div>
+        </motion.div>
         <div>
           <h1 className="font-display text-lg font-bold text-white tracking-tight">AI Chat Assistant</h1>
           <p className="text-xs text-gray-500">Real-time scheme search powered by CivicLens AI</p>
         </div>
         <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/[0.08] border border-emerald-500/15">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+          <div className="relative">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+            <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping opacity-50"></div>
+          </div>
           <span className="text-[11px] text-emerald-400 font-medium">Online • {messages.length - 1} msgs</span>
         </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 animate-count-up ${msg.role === 'user' ? 'flex-row-reverse' : ''}`} style={{ animationDelay: `${Math.min(i * 50, 200)}ms` }}>
+        <AnimatePresence initial={false}>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+            >
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
               msg.role === 'user'
                 ? 'saffron-gradient shadow-sm shadow-saffron-500/20'
@@ -179,7 +209,7 @@ export default function ChatAssistant() {
               <div className={`rounded-2xl p-4 ${
                 msg.role === 'user'
                   ? 'bg-saffron-500/15 border border-saffron-500/20'
-                  : 'bg-white/[0.04] border border-white/[0.06] shadow-lg shadow-black/5'
+                  : 'bg-white/[0.06] border border-white/[0.08] shadow-lg shadow-black/10'
               }`}>
                 <div className="chat-markdown">{renderMarkdown(msg.content)}</div>
 
@@ -223,14 +253,11 @@ export default function ChatAssistant() {
                 )}
 
                 {msg.confidence && (
-                  <div className="flex items-center gap-2 mt-3 pt-2">
-                    <div className="flex-1 h-1 bg-white/[0.04] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-saffron-500 to-emerald-500 progress-shimmer"
-                        style={{width: `${msg.confidence * 100}%`, transition: 'width 0.8s ease'}} />
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-medium">
-                      {(msg.confidence * 100).toFixed(0)}%
-                    </span>
+                  <div className="mt-3 pt-2">
+                    <AIConfidenceInline
+                      score={Math.round(msg.confidence * 100)}
+                      label="AI Confidence"
+                    />
                   </div>
                 )}
               </div>
@@ -245,11 +272,16 @@ export default function ChatAssistant() {
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
 
         {loading && (
-          <div className="flex gap-3 animate-count-up">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex gap-3"
+          >
             <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-saffron-400" />
             </div>
@@ -263,7 +295,7 @@ export default function ChatAssistant() {
                 <span className="text-xs text-gray-500">Searching schemes & analyzing...</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         <div ref={chatEndRef} />
@@ -277,11 +309,18 @@ export default function ChatAssistant() {
           </p>
           <div className="grid grid-cols-2 gap-2">
             {SUGGESTED_QUESTIONS.map((q, i) => (
-              <button key={i} onClick={() => sendMessage(q)}
-                className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-gray-300 hover:bg-saffron-500/[0.08] hover:border-saffron-500/15 hover:text-saffron-400 transition-all text-left animate-count-up scheme-card-lift"
-                style={{ animationDelay: `${i * 50}ms` }}>
+              <motion.button
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => sendMessage(q)}
+                className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-gray-300 hover:bg-saffron-500/[0.08] hover:border-saffron-500/15 hover:text-saffron-400 transition-colors text-left"
+              >
                 {q}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -317,6 +356,6 @@ export default function ChatAssistant() {
           CivicLens AI searches schemes in real-time • Always verify at official sources
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 }

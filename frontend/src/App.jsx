@@ -5,6 +5,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { AIActivityProvider } from './hooks/useAIActivity';
 
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -14,6 +15,7 @@ import SchemeExplorer from './pages/SchemeExplorer';
 import ChatAssistant from './pages/ChatAssistant';
 import AlertsCenter from './pages/AlertsCenter';
 import AdminCrawl from './pages/AdminCrawl';
+import DocumentValidator from './pages/DocumentValidator';
 import Layout from './components/layout/Layout';
 
 function ProtectedRoute({ children }) {
@@ -25,6 +27,7 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <AuthProvider>
+      <AIActivityProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -36,10 +39,12 @@ export default function App() {
             <Route path="chat" element={<ChatAssistant />} />
             <Route path="alerts" element={<AlertsCenter />} />
             <Route path="admin" element={<AdminCrawl />} />
+            <Route path="validator" element={<DocumentValidator />} />
           </Route>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
+      </AIActivityProvider>
     </AuthProvider>
   );
 }

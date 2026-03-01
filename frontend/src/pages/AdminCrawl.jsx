@@ -1,15 +1,25 @@
 /**
- * CivicLens AI — Admin Crawl Control (v3 — production-grade polish)
+ * CivicLens AI — Admin Crawl Control (v5 — Cinematic Pitch Mode)
  */
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../services/api';
+import { useAIActivity } from '../hooks/useAIActivity';
 import {
   Globe, Plus, Play, Trash2, ToggleLeft, ToggleRight,
   RefreshCw, ExternalLink, Clock, ShieldCheck, X,
   Activity, Cpu, Database, CheckCircle, AlertTriangle,
   FileText, Zap, Server, BookOpen
 } from 'lucide-react';
+
+const stagger = {
+  container: { hidden: {}, show: { transition: { staggerChildren: 0.05 } } },
+  item: {
+    hidden: { opacity: 0, y: 14 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
+  },
+};
 
 const SOURCE_ICONS = {
   portal: Globe,
@@ -26,6 +36,7 @@ export default function AdminCrawl() {
   const [showAdd, setShowAdd] = useState(false);
   const [stats, setStats] = useState(null);
   const [form, setForm] = useState({ name: '', url: '', source_type: 'portal', schedule_interval: 6 });
+  const { startAgent, completeAgent, failAgent } = useAIActivity();
 
   useEffect(() => {
     loadSources();
@@ -55,13 +66,20 @@ export default function AdminCrawl() {
   const triggerCrawl = async () => {
     setCrawling(true);
     setCrawlResult(null);
+    startAgent('crawl', `Crawling ${sources.filter(s => s.is_active).length} active sources…`);
+    startAgent('parser', 'Parsing crawled data…');
     try {
       const res = await adminAPI.triggerCrawl();
       setCrawlResult(res.data);
+      completeAgent('crawl', `${res.data.sources_crawled || sources.filter(s => s.is_active).length} sources scanned`);
+      completeAgent('parser', `${res.data.new_schemes || 0} new schemes parsed`);
       loadSources();
       loadStats();
     } catch {
-      setCrawlResult({ status: 'simulated', new_schemes: 2, updated_schemes: 1, errors: 0, sources_crawled: sources.filter(s => s.is_active).length });
+      const fallbackResult = { status: 'simulated', new_schemes: 2, updated_schemes: 1, errors: 0, sources_crawled: sources.filter(s => s.is_active).length };
+      setCrawlResult(fallbackResult);
+      completeAgent('crawl', `${fallbackResult.sources_crawled} sources scanned (simulated)`);
+      completeAgent('parser', `${fallbackResult.new_schemes} new schemes parsed`);
     } finally {
       setCrawling(false);
     }
@@ -101,35 +119,49 @@ export default function AdminCrawl() {
   const activeSources = sources.filter(s => s.is_active).length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      variants={stagger.container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <motion.div variants={stagger.item} className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-white flex items-center gap-3 tracking-tight">
-            <div className="w-10 h-10 rounded-xl bg-saffron-500/10 flex items-center justify-center">
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: 3 }}
+              className="w-10 h-10 rounded-xl bg-saffron-500/10 flex items-center justify-center"
+            >
               <ShieldCheck className="w-5 h-5 text-saffron-400" />
-            </div>
+            </motion.div>
             Crawl Control
           </h1>
           <p className="text-gray-400 mt-1.5 text-sm">Manage autonomous crawl sources and trigger data collection cycles</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setShowAdd(true)} className="btn-secondary text-sm flex items-center gap-2">
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAdd(true)} className="btn-secondary text-sm flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Source
-          </button>
-          <button onClick={triggerCrawl} disabled={crawling} className={`btn-primary text-sm flex items-center gap-2 ${crawling ? 'animate-pulse-ring' : ''}`}>
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={triggerCrawl} disabled={crawling} className={`btn-primary text-sm flex items-center gap-2 ${crawling ? 'animate-pulse-ring' : ''}`}>
             {crawling ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Crawling…</>
             ) : (
               <><Play className="w-4 h-4" /> Trigger Crawl</>
             )}
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Crawl Result Toast */}
-      {crawlResult && (
-        <div className="glass-card p-5 border border-green-500/20 bg-gradient-to-br from-green-500/[0.06] to-transparent animate-count-up">
+      <AnimatePresence>
+        {crawlResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.97 }}
+            className="glass-card-cinematic p-5 border border-green-500/20 bg-gradient-to-br from-green-500/[0.06] to-transparent"
+          >
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center">
@@ -159,42 +191,34 @@ export default function AdminCrawl() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* System Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div className="stat-card animate-count-up">
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Globe className="w-3 h-3" /> Sources</span>
-          <span className="text-2xl font-bold text-white mt-1">{sources.length}</span>
-        </div>
-        <div className="stat-card animate-count-up" style={{animationDelay: '80ms'}}>
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Activity className="w-3 h-3" /> Active</span>
-          <span className="text-2xl font-bold text-green-400 mt-1">{activeSources}</span>
-        </div>
-        <div className="stat-card animate-count-up" style={{animationDelay: '160ms'}}>
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Database className="w-3 h-3" /> Schemes</span>
-          <span className="text-2xl font-bold text-saffron-400 mt-1">{stats?.total_schemes || 34}</span>
-        </div>
-        <div className="stat-card animate-count-up" style={{animationDelay: '240ms'}}>
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Crawl Runs</span>
-          <span className="text-2xl font-bold text-blue-400 mt-1">{stats?.total_crawl_runs || 0}</span>
-        </div>
-        <div className="stat-card animate-count-up" style={{animationDelay: '320ms'}}>
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Zap className="w-3 h-3" /> AI Confidence</span>
-          <span className="text-2xl font-bold text-purple-400 mt-1">{((stats?.ai_confidence || 0.92) * 100).toFixed(0)}%</span>
-        </div>
-        <div className="stat-card animate-count-up" style={{animationDelay: '400ms'}}>
-          <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Cpu className="w-3 h-3" /> Health</span>
-          <span className={`text-2xl font-bold mt-1 ${(stats?.system_health || 'healthy') === 'healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {stats?.system_health === 'healthy' ? '✓' : '⚠'}
-          </span>
-        </div>
-      </div>
+      <motion.div variants={stagger.item} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+        {[
+          { icon: Globe, label: 'Sources', value: sources.length, color: 'text-white' },
+          { icon: Activity, label: 'Active', value: activeSources, color: 'text-green-400' },
+          { icon: Database, label: 'Schemes', value: stats?.total_schemes || 34, color: 'text-saffron-400' },
+          { icon: RefreshCw, label: 'Crawl Runs', value: stats?.total_crawl_runs || 0, color: 'text-blue-400' },
+          { icon: Zap, label: 'AI Confidence', value: `${((stats?.ai_confidence || 0.92) * 100).toFixed(0)}%`, color: 'text-purple-400' },
+          { icon: Cpu, label: 'Health', value: (stats?.system_health || 'healthy') === 'healthy' ? '✓' : '⚠', color: (stats?.system_health || 'healthy') === 'healthy' ? 'text-emerald-400' : 'text-amber-400' },
+        ].map((s, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ y: -3 }}
+            className="stat-card"
+          >
+            <span className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><s.icon className="w-3 h-3" /> {s.label}</span>
+            <span className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</span>
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* Last Crawl Info */}
       {stats?.last_crawl_time && (
-        <div className="glass-card p-3 flex items-center gap-3">
+        <motion.div variants={stagger.item} className="glass-card-premium p-3 flex items-center gap-3">
           <Clock className="w-4 h-4 text-gray-500" />
           <span className="text-xs text-gray-400">
             Last crawl: <span className="text-white">{new Date(stats.last_crawl_time).toLocaleString('en-IN')}</span>
@@ -202,13 +226,14 @@ export default function AdminCrawl() {
           <span className="text-xs text-gray-500 ml-auto">
             Uptime: {(stats.uptime_hours || 0).toFixed(1)}h
           </span>
-        </div>
+        </motion.div>
       )}
 
       {/* Add Source Modal */}
+      <AnimatePresence>
       {showAdd && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowAdd(false)}>
-          <div className="glass-card p-6 w-full max-w-md animate-scale-in border border-white/[0.08]" onClick={e => e.stopPropagation()}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => setShowAdd(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.93, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.93, y: 16 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="glass-card-premium p-6 w-full max-w-md border border-white/[0.08]" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-white mb-4">Add Crawl Source</h2>
             <form onSubmit={addSource} className="space-y-4">
               <div>
@@ -240,13 +265,14 @@ export default function AdminCrawl() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAdd(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" className="btn-primary flex-1">Add Source</button>
+                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="button" onClick={() => setShowAdd(false)} className="btn-secondary flex-1">Cancel</motion.button>
+                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit" className="btn-primary flex-1">Add Source</motion.button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Sources List */}
       {loading ? (
@@ -256,14 +282,14 @@ export default function AdminCrawl() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <motion.div variants={stagger.container} initial="hidden" animate="show" className="space-y-3">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <FileText className="w-3.5 h-3.5" /> Crawl Sources ({sources.length})
           </h3>
           {sources.map((src, i) => {
             const SourceIcon = SOURCE_ICONS[src.source_type] || Globe;
             return (
-            <div key={src.id || i} className="glass-card p-4 flex items-center gap-4 scheme-card-lift animate-count-up" style={{animationDelay: `${i * 50}ms`}}>
+            <motion.div key={src.id || i} variants={stagger.item} whileHover={{ x: 4, y: -2, boxShadow: '0 16px 48px rgba(0,0,0,0.25)' }} className="glass-card-cinematic p-4 flex items-center gap-4">
               {/* Status */}
               <button onClick={() => toggleSource(src.id)} className="flex-shrink-0 transition-transform hover:scale-110">
                 {src.is_active ? (
@@ -318,12 +344,12 @@ export default function AdminCrawl() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

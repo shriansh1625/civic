@@ -1,12 +1,14 @@
 /**
- * CivicLens AI — Dashboard Page (v3 — production-grade polish)
- * Personalized civic intelligence dashboard with animated count-up stats,
- * shimmer loading skeleton, health ring, system status, and micro-interactions.
+ * CivicLens AI — Dashboard Page (v5 — Cinematic Pitch Mode)
+ * Personalized civic intelligence dashboard with cinematic glassmorphism,
+ * staggered card reveals, enhanced health ring, and premium microinteractions.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useAIActivity } from '../hooks/useAIActivity';
 import { dashboardAPI } from '../services/api';
+import { motion } from 'framer-motion';
 import {
   BarChart3, TrendingUp, Bell, FileText, Clock, Zap,
   ArrowUpRight, Sparkles, IndianRupee, Activity, Shield,
@@ -14,6 +16,14 @@ import {
 } from 'lucide-react';
 import BudgetChart from '../components/charts/BudgetChart';
 import CategoryChart from '../components/charts/CategoryChart';
+
+const stagger = {
+  container: { hidden: {}, show: { transition: { staggerChildren: 0.06 } } },
+  item: {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+  },
+};
 
 /* ── Animated number counter ── */
 function AnimatedNumber({ value, duration = 1200, prefix = '', suffix = '' }) {
@@ -101,6 +111,7 @@ function SkeletonDashboard() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { startAgent, completeAgent, failAgent } = useAIActivity();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -109,11 +120,14 @@ export default function Dashboard() {
   }, []);
 
   const loadDashboard = async () => {
+    startAgent('personalization', 'Loading personalized dashboard…');
     try {
       const res = await dashboardAPI.getDashboard();
       setData(res.data);
+      completeAgent('personalization', 'Dashboard personalized for your profile');
     } catch (err) {
       setData(getFallbackData());
+      failAgent('personalization', 'Using cached dashboard data');
     } finally {
       setLoading(false);
     }
@@ -135,40 +149,55 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      variants={stagger.container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       {/* ── Welcome Header ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <motion.div variants={stagger.item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-white tracking-tight">
-            Welcome back, <span className="text-gradient">{user?.full_name || 'User'}</span>
+            Welcome back, <span className="text-gradient-hero">{user?.full_name || 'User'}</span>
           </h1>
-          <p className="text-gray-400 mt-1 text-sm">
+          <p className="text-gray-400 mt-1.5 text-sm">
             Your personalized civic intelligence briefing for today
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15 animate-count-up">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/15"
+          >
+            <div className="relative">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-50" />
+            </div>
             <span className="text-sm text-emerald-400 font-medium">System Operational</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-saffron-500/[0.08] border border-saffron-500/15 animate-count-up" style={{ animationDelay: '100ms' }}>
-            <Sparkles className="w-4 h-4 text-saffron-400" />
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-saffron-500/[0.08] border border-saffron-500/15"
+          >
+            <Sparkles className="w-4 h-4 text-saffron-400 animate-sparkle" />
             <span className="text-sm text-saffron-400 font-medium">AI Active</span>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <motion.div variants={stagger.item} className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((stat, i) => (
-          <div
+          <motion.div
             key={i}
-            className={`stat-card scheme-card-lift animate-count-up group cursor-default`}
-            style={{ animationDelay: `${i * 80}ms` }}
+            whileHover={{ y: -4, boxShadow: '0 16px 48px rgba(0,0,0,0.3)' }}
+            transition={{ duration: 0.2 }}
+            className="stat-card group cursor-default"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{stat.label}</span>
-              <div className={`w-9 h-9 rounded-xl ${stat.bg} ${stat.border} border flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}>
+              <div className={`w-9 h-9 rounded-xl ${stat.bg} ${stat.border} border flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                 <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
             </div>
@@ -178,14 +207,14 @@ export default function Dashboard() {
                 : <AnimatedNumber value={stat.value} />
               }
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* ── Health Score + System Status Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <motion.div variants={stagger.item} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Health Score */}
-        <div className="glass-card p-6 flex items-center gap-6 group scheme-card-lift">
+        <motion.div whileHover={{ y: -4, boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 0 40px rgba(52,211,153,0.06)' }} className="glass-card-cinematic p-6 flex items-center gap-6 group">
           <HealthScoreRing score={healthScore} />
           <div>
             <h3 className="font-display font-semibold text-white text-base tracking-tight">Civic Intelligence Health</h3>
@@ -199,10 +228,10 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Last Crawl */}
-        <div className="glass-card p-6 scheme-card-lift">
+        <motion.div whileHover={{ y: -4, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-saffron-500/10 flex items-center justify-center">
               <Cpu className="w-4 h-4 text-saffron-400" />
@@ -223,13 +252,18 @@ export default function Dashboard() {
               <span className="text-gray-200 font-medium">16 EPYC Cores</span>
             </div>
             <div className="w-full h-1.5 bg-white/[0.04] rounded-full mt-1 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-saffron-500 to-emerald-500 progress-shimmer" style={{width: '78%', transition: 'width 1s ease'}} />
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: '78%' }}
+                transition={{ duration: 1.2, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full bg-gradient-to-r from-saffron-500 to-emerald-500 progress-shimmer"
+              />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Insights */}
-        <div className="glass-card p-6 scheme-card-lift">
+        <motion.div whileHover={{ y: -4, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
               <Shield className="w-4 h-4 text-emerald-400" />
@@ -243,18 +277,24 @@ export default function Dashboard() {
               { color: 'bg-blue-400', text: `${Object.keys(d.schemes_by_category || {}).length} categories covered` },
               { color: 'bg-purple-400', text: `${Object.keys(d.budget_by_ministry || {}).length} ministries monitored` },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-xs animate-count-up" style={{ animationDelay: `${i * 100 + 400}ms` }}>
-                <div className={`w-2 h-2 rounded-full ${item.color} flex-shrink-0`} />
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 + i * 0.1 }}
+                className="flex items-center gap-3 text-xs"
+              >
+                <div className={`w-2 h-2 rounded-full ${item.color} flex-shrink-0 shadow-sm`} style={{ boxShadow: `0 0 6px currentColor` }} />
                 <span className="text-gray-300">{item.text}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── Charts Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="glass-card p-6 scheme-card-lift">
+      <motion.div variants={stagger.item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <motion.div whileHover={{ y: -3 }} className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-lg bg-saffron-500/10 flex items-center justify-center">
               <IndianRupee className="w-4 h-4 text-saffron-400" />
@@ -262,9 +302,9 @@ export default function Dashboard() {
             <h2 className="font-display text-base font-semibold text-white">Budget by Ministry</h2>
           </div>
           <BudgetChart data={d.budget_by_ministry} />
-        </div>
+        </motion.div>
 
-        <div className="glass-card p-6 scheme-card-lift">
+        <motion.div whileHover={{ y: -3 }} className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
               <BarChart3 className="w-4 h-4 text-blue-400" />
@@ -272,13 +312,13 @@ export default function Dashboard() {
             <h2 className="font-display text-base font-semibold text-white">Schemes by Category</h2>
           </div>
           <CategoryChart data={d.schemes_by_category} />
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── What's New + Relevant ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <motion.div variants={stagger.item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Recent Updates */}
-        <div className="glass-card p-6">
+        <div className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
               <Clock className="w-4 h-4 text-emerald-400" />
@@ -290,9 +330,13 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2.5">
             {(d.recent_updates || []).slice(0, 5).map((update, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] transition-all cursor-pointer scheme-card-lift border border-transparent hover:border-white/[0.06]">
+              <motion.div
+                key={i}
+                whileHover={{ x: 4 }}
+                className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-all cursor-pointer border border-transparent hover:border-white/[0.06]"
+              >
                 <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                  update.change_type === 'new' ? 'bg-emerald-400' : 'bg-saffron-400'
+                  update.change_type === 'new' ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-saffron-400 shadow-sm shadow-saffron-400/50'
                 }`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{update.title}</p>
@@ -305,7 +349,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-gray-600 mt-1 flex-shrink-0" />
-              </div>
+              </motion.div>
             ))}
             {(d.recent_updates || []).length === 0 && (
               <div className="text-center py-8">
@@ -318,7 +362,7 @@ export default function Dashboard() {
         </div>
 
         {/* Personalized Feed */}
-        <div className="glass-card p-6">
+        <div className="glass-card-cinematic p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-lg bg-saffron-500/10 flex items-center justify-center">
               <Zap className="w-4 h-4 text-saffron-400" />
@@ -327,7 +371,11 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2.5">
             {(d.relevant_schemes || []).slice(0, 5).map((scheme, i) => (
-              <div key={i} className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] transition-all cursor-pointer group scheme-card-lift border border-transparent hover:border-white/[0.06]">
+              <motion.div
+                key={i}
+                whileHover={{ x: 4 }}
+                className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-all cursor-pointer group border border-transparent hover:border-white/[0.06]"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -350,7 +398,7 @@ export default function Dashboard() {
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-gray-600 group-hover:text-saffron-400 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 flex-shrink-0 mt-1" />
                 </div>
-              </div>
+              </motion.div>
             ))}
             {(d.relevant_schemes || []).length === 0 && (
               <div className="text-center py-8">
@@ -361,8 +409,8 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
