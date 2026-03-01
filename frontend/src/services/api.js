@@ -21,11 +21,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 errors
+// Handle 401 errors — skip auth endpoints to avoid clearing token on bad login attempts
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('civiclens_token');
       localStorage.removeItem('civiclens_user');
       window.location.href = '/login';
